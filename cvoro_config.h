@@ -11,8 +11,8 @@
 #  define real4 cl_double4
 #endif
 
-#  define CVORO_STATUS_FILE "/Users/alonso/sources/cVoro/openCLDistrib/Status.h"
-#  define CVORO_CONVEX_CELL_FILE "/Users/alonso/sources/cVoro/openCLDistrib/ConvexCell.cl"
-#  define CVORO_KNEAREST_FILE "/Users/alonso/sources/cVoro/openCLDistrib/knearests.cl"
-#  define CVORO_OPTIONS_FILE "/Users/alonso/sources/cVoro/openCLDistrib/cvoro_options.txt"
+#  define CVORO_STATUS_FILE "/home/hyan/Projects/GPU-Restricted-Power-Diagrams/Status.h"
+#  define CVORO_CONVEX_CELL_FILE "/home/hyan/Projects/GPU-Restricted-Power-Diagrams/ConvexCell.cl"
+#  define CVORO_KNEAREST_FILE "/home/hyan/Projects/GPU-Restricted-Power-Diagrams/knearests.cl"
+#  define CVORO_OPTIONS_FILE "/home/hyan/Projects/GPU-Restricted-Power-Diagrams/cvoro_options.txt"
 

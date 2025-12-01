@@ -15,7 +15,7 @@
 #include "basic.h"
 #include "cvoro_config.h"
 #include "Grid.h"
-#include "knearests.h"
+#include "knn_cuda.h"
 #include "openCL.h"
 #include "Status.h"
 #include "StopWatch.h"
@@ -425,7 +425,7 @@ struct VoroAlgoComputeData {
     }
 
     std::shared_ptr<OpenCLContext> m_context;
-    std::shared_ptr<KNearests> m_kn;
+    std::shared_ptr<CudaKNearests> m_kn;
 
     int m_maxKComputed;
     int m_K;
@@ -967,10 +967,13 @@ bool VoroAlgoComputeData::launch(VoroAlgoPrivateData const &data, cl_mem ids, in
     double sum_convexcell = 0;
     if (P1)
         const_cast<VoroAlgoComputeData *>(this)->updatePlanes(numLIds*P1);
+
+    std::cout<<"numIDs = "<< numIds << "numLIds" << numLIds << "steps "<< numSteps<< std::endl;
     for (int st=0; st<numSteps; ++st) {
         int kOffset=st*numLIds;
         int num=st+1<numSteps ? numLIds : numIds-kOffset;
         if (!m_kn->buildKnearests(m_K, ids, num, kOffset, sum_knn)) return false;
+
         Stopwatch WVoro("voro_cell", m_debug);
         unsigned int n=0;
         auto errNum = clSetKernelArg(memory.kernel, n++, nLocal*size_t(m_V)*sizeof(cl_uchar4), nullptr);
@@ -983,8 +986,11 @@ bool VoroAlgoComputeData::launch(VoroAlgoPrivateData const &data, cl_mem ids, in
         errNum |= clSetKernelArg(memory.kernel, n++, sizeof(int), &num);
         errNum |= clSetKernelArg(memory.kernel, n++, sizeof(cl_mem), &ids);
         errNum |= clSetKernelArg(memory.kernel, n++, sizeof(int), &kOffset);
-        errNum |= clSetKernelArg(memory.kernel, n++, sizeof(cl_mem), &m_kn->getPoints());
-        errNum |= clSetKernelArg(memory.kernel, n++, sizeof(cl_mem), &m_kn->getNearests());
+        cl_mem pts = m_kn->getPoints();
+        errNum |= clSetKernelArg(memory.kernel, n++, sizeof(cl_mem), &pts);
+        cl_mem nn = m_kn->getNearests();
+        errNum |= clSetKernelArg(memory.kernel, n++, sizeof(cl_mem), &nn);
+
         if (!computeBordering && grid) { 
             errNum |= clSetKernelArg(memory.kernel, n++, sizeof(cl_mem), &grid->m_inDomain);
             errNum |= clSetKernelArg(memory.kernel, n++, sizeof(cl_mem), &grid->m_points);
@@ -1090,7 +1096,7 @@ void VoroAlgo::setInputPoints(cl_mem seeds, int numSeeds)
     if (getCLQueue()==nullptr && !getContext()->createCommandQueue(m_enableCLProfiling))
         return;
     m_computeData=std::make_shared<VoroAlgoComputeData>(getContext(), m_debug);
-    m_computeData->m_kn=std::make_shared<KNearests>(getContext(), seeds, numSeeds, m_debug);
+    m_computeData->m_kn=std::make_shared<CudaKNearests>(getContext(), seeds, numSeeds, m_debug);
     m_computeData->m_numSeeds = getNumInputPoints();
     if (m_debug) m_computeData->m_kn->printStats(std::cerr);
 }
@@ -1300,6 +1306,7 @@ bool VoroAlgo::launch(std::function<bool(VoroAlgo const &)> saveData, std::vecto
     int numSeeds=m_computeData->m_numSeeds;
     if (m_debug) showStatusStats(*getContext(), m_computeData->m_status, numSeeds, m_debug);
 
+    /*
     // --- triangle overflow ---
     m_computeData->recomputeIds(*m_data, "stat==triangle_overflow", "tr_overflow",
                                 numErrorIds[0] > 0 ? &stats.back() : nullptr);
@@ -1308,6 +1315,7 @@ bool VoroAlgo::launch(std::function<bool(VoroAlgo const &)> saveData, std::vecto
         stats.push_back(VoroAlgoStat("tr_overflow"));
         if (!m_computeData->launch(*m_data, errorIds[1], numErrorIds[1], events, stats.back())) return false;
     }
+
     if (numErrorIds[0] > 0) {
         // be sure to use the maximum parameters
         m_computeData->m_T = m_T;
@@ -1374,6 +1382,7 @@ bool VoroAlgo::launch(std::function<bool(VoroAlgo const &)> saveData, std::vecto
             m_computeData->recomputeIds(*m_data, "stat!=empty_cell", "extra", &stats.back());
         }
     }
+    */
     // show stats
     if (m_debug) showStatusStats(*getContext(), m_computeData->m_status, numSeeds, m_debug);
 

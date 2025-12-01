@@ -16,7 +16,6 @@
 #include "knearests.h"
 #include "openCL.h"
 #include "StopWatch.h"
-
 static char const *s_defineReal={
 #ifndef USE_DOUBLE
     "#define real float\n"
